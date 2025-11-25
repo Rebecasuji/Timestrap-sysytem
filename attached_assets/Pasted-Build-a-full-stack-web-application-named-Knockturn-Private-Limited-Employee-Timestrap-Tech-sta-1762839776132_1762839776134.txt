@@ -1,0 +1,105 @@
+Build a full-stack web application named *Knockturn Private Limited – Employee Timestrap*.
+
+Tech stack:
+- React + Vite (Frontend)
+- Node.js + Express + TypeScript (Backend)
+- PostgreSQL
+- Drizzle ORM
+- TailwindCSS
+- GSAP (animations)
+- Parallax effects
+- Chart.js (analytics)
+- React Calendar / Date Picker
+
+✅ LOGIN PAGE (GSAP Lamp Pull Animation)
+- Employee ID + Employee Name.
+- Lamp pull → glow animation → verify employee in PostgreSQL.
+- If employee not found → auto-create.
+- Navigate to Tracker Page.
+- Theme: black + electric blue glowing UI.
+
+✅ TRACKER PAGE (TimesheetPage.tsx)
+*Add these enhancements:*
+1. Add a *Calendar* at the top header (date selector).
+2. Add *Project Column* in task table:
+   - User selects a project when adding a task.
+   - Tracker becomes a *Task Sheet*.
+3. Task fields:
+   - Project(default like we can type it?
+   - +Add Task ,Title of the task (can be type)
+   - Description (compact text box)
+   - Tools used (multi-select)(
+Tools to be Google,google calander,google task,Google keep,zoho books ,zoho expenses,zoho cliq,emails,notes,notions,ms office ,excel,word,Outlook,ppt,web browser,safari,firebox,chromems teams,canva,calls/phones, meeting with teams,meeting others, chatgpt, gemini)
+   - Start Time (auto or manual)
+   - End Time (auto or manual)
+   - Recording Button:
+       • Start Recording → start timer  
+       • Stop Recording → stop timer  
+       • Save task  
+4. Add manual time & date override.
+5. Add *Day Shift Selector*:
+   - 4 Hours  
+   - 8 Hours  
+   - 12 Hours  
+Total working time should be calculated after each save it should at the top after the header then after everything come it's main
+   - Only if shift hours are completed → allow Final Submit.
+6. Add *Logout button*.
+7. Make full UI animated:
+   - Parallax scrolling sections
+   - Smooth slide transitions
+   - Glowing hover cards
+   - Animated task row expansion
+
+✅ ANALYTICS (Chart.js)
+Add charts:
+- Doughnut chart → Work vs Break vs tools hours
+- Bar chart → Task-wise hours
+- Progress/Line chart → Productivity over the day
+- NEW: Tools Usage Pie Chart  
+  (Count of how many times each tool was used across tasks)
+
+All charts must read from PostgreSQL: tasks + timesheets + tools.
+
+✅ BACKEND APIs (Node.js + Express)
+- /api/login → Login/register employee
+- /api/employees/:id/timesheet → Fetch or create timesheet
+- /api/tasks → Add, update, complete tasks (with project, tools, description)
+- /api/submit → Submit timesheet only if shift completed
+- /api/projects → Add/fetch projects
+- /api/tools → Add/fetch tools used by employee
+
+✅ DATABASE (PostgreSQL + Drizzle ORM)
+
+employees  
+- id  
+- employee_id  
+- name  
+
+timesheets  
+- id  
+- employee_id  
+- date  
+- total_work_seconds  
+- shift_type (4hr/8hr/12hr)  
+- is_submitted  
+
+tasks  
+- id  
+- timesheet_id  
+- project  
+- title  
+- description  
+- tools_used (array)  
+- start_time  
+- end_time  
+- duration_seconds  
+- is_complete  
+
+✅ FINAL REQUIREMENT  
+- Full responsive futuristic UI  
+- Compact task bar design  
+- Animated parallax design  
+- Auto real-time updates  
+- Fully functional frontend + backend + database  
+- Provide complete source code and folder structure
+-
