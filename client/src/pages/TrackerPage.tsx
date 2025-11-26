@@ -13,11 +13,13 @@ import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 
 import logoUrl from "@/assets/screenshot.png";
 import { gsap } from "gsap";
-
 import { toast } from "@/components/ui/use-toast";
+
 import type { Task, TimeEntry } from "@/types/task";
 
 import axios from "axios";
+
+// ✅ MAIN FIX → Uses your Render backend
 const API = import.meta.env.VITE_API_URL;
 
 type ShiftType = "4hr" | "8hr" | "12hr";
@@ -39,7 +41,8 @@ export default function TrackerPage() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [rawTasks, setRawTasks] = useState<any[]>([]);
-  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [recordingStartTime, setRecordingStartTime] =
+    useState<number | null>(null);
 
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -47,7 +50,7 @@ export default function TrackerPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load existing worklogs
+  // 🔥 FIXED → Load worklogs FROM RENDER BACKEND
   useEffect(() => {
     axios
       .get(`${API}/api/worklogs`)
@@ -74,7 +77,8 @@ export default function TrackerPage() {
       task.timeEntries.forEach((entry) => {
         total += Math.floor(
           (new Date(entry.endTime).getTime() -
-            new Date(entry.startTime).getTime()) / 1000
+            new Date(entry.startTime).getTime()) /
+            1000
         );
       })
     );
@@ -98,7 +102,7 @@ export default function TrackerPage() {
     return () => clearInterval(timer);
   }, [tasks, isRecording, recordingStartTime]);
 
-  // SAVE WORKLOG
+  // 🔥 FIXED → Save worklog to RENDER backend
   const saveWorklogToServer = async (task: Task) => {
     try {
       const payload = {
@@ -128,7 +132,7 @@ export default function TrackerPage() {
     }
   };
 
-  // SUBMIT TIMESHEET
+  // SUBMIT TIMESHEET EMAIL
   const handleSubmitTimesheet = async () => {
     if (isSubmitting) return;
 
@@ -222,7 +226,7 @@ export default function TrackerPage() {
     );
   };
 
-  // RECORDING
+  // RECORDING LOGIC
   const handleStartRecording = () => {
     setIsRecording(true);
     setRecordingStartTime(Date.now());
@@ -279,17 +283,17 @@ export default function TrackerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-blue-950 relative overflow-hidden">
-      
       {/* Header */}
       <header className="sticky top-0 z-50 bg-black/50 backdrop-blur-xl border-b border-blue-500/30">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          
           <div className="flex items-center gap-4">
             <img src={logoUrl} className="h-10" />
             <div className="hidden sm:block">
               <p className="text-xs text-muted-foreground">Employee</p>
               <p className="text-sm font-semibold">{employeeData.employeeName}</p>
-              <p className="text-xs text-blue-400 font-mono">ID: {employeeData.employeeId}</p>
+              <p className="text-xs text-blue-400 font-mono">
+                ID: {employeeData.employeeId}
+              </p>
             </div>
           </div>
 
@@ -307,16 +311,13 @@ export default function TrackerPage() {
               <LogOut className="h-4 w-4 mr-2" /> Logout
             </Button>
           </div>
-
         </div>
       </header>
 
       {/* Main */}
       <main className="container mx-auto px-6 py-8 space-y-6">
-        
         <div className="flex flex-col sm:flex-row justify-between gap-4 bg-blue-900/20 p-6 rounded-lg">
-          
-          <DateSelector 
+          <DateSelector
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
@@ -325,7 +326,6 @@ export default function TrackerPage() {
             selectedShift={selectedShift}
             onShiftChange={setSelectedShift}
           />
-
         </div>
 
         <TotalTimeDisplay
@@ -377,7 +377,6 @@ export default function TrackerPage() {
               : `Complete ${selectedShift.toUpperCase()} Shift`}
           </Button>
         </div>
-
       </main>
     </div>
   );
