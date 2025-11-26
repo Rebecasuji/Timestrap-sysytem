@@ -14,11 +14,12 @@
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
 
     "build:client": "cd client && vite build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=dist/index.js",
+
+    "build:server": "esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs",
 
     "build": "npm run build:client && npm run build:server",
 
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "NODE_ENV=production node dist/index.cjs",
 
     "check": "tsc",
     "db:push": "drizzle-kit push"
