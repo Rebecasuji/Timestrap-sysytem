@@ -1,383 +1,204 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LogOut, BarChart3 } from "lucide-react";
-
-import DateSelector from "@/components/DateSelector";
-import ShiftSelector from "@/components/ShiftSelector";
-import TotalTimeDisplay from "@/components/TotalTimeDisplay";
-import TaskForm from "@/components/TaskForm";
-import TaskList from "@/components/TaskList";
-import EditTaskDialog from "@/components/EditTaskDialog";
-import AnalyticsDashboard from "@/components/AnalyticsDashboard";
-
-import logoUrl from "@/assets/screenshot.png";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import { gsap } from "gsap";
-import { toast } from "@/components/ui/use-toast";
+import logoUrl from "@/assets/screenshot.png";
 
-import type { Task, TimeEntry } from "@/types/task";
-
-import axios from "axios";
-
-// ✅ MAIN FIX → Uses your Render backend
+// ✅ Add API URL
 const API = import.meta.env.VITE_API_URL;
 
-type ShiftType = "4hr" | "8hr" | "12hr";
-
-const normalizeTask = (task: any): Task => ({
-  ...task,
-  description: task.description ?? "",
-  tools: task.tools ?? [],
-  timeEntries: task.timeEntries ?? [],
-  completionPercent: task.completionPercent ?? 0,
-});
-
-export default function TrackerPage() {
+export default function LoginPage() {
   const [, setLocation] = useLocation();
+  const [employeeId, setEmployeeId] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedShift, setSelectedShift] = useState<ShiftType>("8hr");
-  const [totalSeconds, setTotalSeconds] = useState(0);
+  const lampRef = useRef<HTMLDivElement>(null);
+  const chainRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [rawTasks, setRawTasks] = useState<any[]>([]);
-  const [recordingStartTime, setRecordingStartTime] =
-    useState<number | null>(null);
+  const handleLogin = async () => {
+    if (!employeeId || !employeeName) return;
 
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    try {
+      // 🔥 FIXED — call Render backend correctly
+      const response = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId,
+          employeeName,
+        }),
+      });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+      const data = await response.json();
 
-  // 🔥 FIXED → Load worklogs FROM RENDER BACKEND
+      if (!data.success) {
+        alert(data.message || "Invalid Login!");
+        return;
+      }
+
+      // Save validated employee data
+      localStorage.setItem("employeeData", JSON.stringify(data.employee));
+
+      // Animation
+      setIsAnimating(true);
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          setTimeout(() => {
+            setLocation("/tracker");
+          }, 500);
+        },
+      });
+
+      tl.to(chainRef.current, {
+        y: 40,
+        duration: 0.3,
+        ease: "power2.out",
+      })
+        .to(
+          lampRef.current,
+          {
+            rotation: 15,
+            duration: 0.4,
+            ease: "elastic.out(1, 0.3)",
+          },
+          "-=0.2"
+        )
+        .to(
+          glowRef.current,
+          {
+            opacity: 1,
+            scale: 1.5,
+            duration: 0.6,
+            ease: "power2.out",
+          },
+          "-=0.3"
+        )
+        .to(
+          formRef.current,
+          {
+            opacity: 0,
+            y: 20,
+            duration: 0.4,
+          },
+          "-=0.4"
+        );
+    } catch (error) {
+      alert("Server error — could not login");
+      console.error("Login Error:", error);
+    }
+  };
+
   useEffect(() => {
-    axios
-      .get(`${API}/api/worklogs`)
-      .catch((err) => console.error("Error fetching work logs:", err));
+    gsap.fromTo(
+      lampRef.current,
+      { y: -50, opacity: 0 },
+      { y: 0, opacity: 1, duration: 1, ease: "bounce.out" }
+    );
+    gsap.fromTo(
+      formRef.current,
+      { y: 30, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.8, delay: 0.3, ease: "power2.out" }
+    );
   }, []);
 
-  const employeeData = JSON.parse(
-    localStorage.getItem("employeeData") ||
-      '{"employeeId":"","employeeName":"Guest"}'
-  );
-
-  const tasks: Task[] = rawTasks.map(normalizeTask);
-
-  const shiftSeconds = {
-    "4hr": 14400,
-    "8hr": 28800,
-    "12hr": 43200,
-  };
-
-  const calculateTotalSeconds = () => {
-    let total = 0;
-
-    tasks.forEach((task) =>
-      task.timeEntries.forEach((entry) => {
-        total += Math.floor(
-          (new Date(entry.endTime).getTime() -
-            new Date(entry.startTime).getTime()) /
-            1000
-        );
-      })
-    );
-
-    if (isRecording && recordingStartTime) {
-      total += Math.floor((Date.now() - recordingStartTime) / 1000);
-    }
-
-    return total;
-  };
-
-  useEffect(() => {
-    setTotalSeconds(calculateTotalSeconds());
-  }, [tasks, isRecording, recordingStartTime]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTotalSeconds(calculateTotalSeconds());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [tasks, isRecording, recordingStartTime]);
-
-  // 🔥 FIXED → Save worklog to RENDER backend
-  const saveWorklogToServer = async (task: Task) => {
-    try {
-      const payload = {
-        employeeEmpcode: employeeData.employeeId,
-        project: task.project,
-        title: task.title,
-        description: task.description,
-        tools: task.tools,
-        timeEntries: task.timeEntries,
-        shiftType: selectedShift,
-        date: selectedDate.toISOString().slice(0, 10),
-      };
-
-      const resp = await fetch(`${API}/api/worklogs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp.ok) return null;
-
-      const json = await resp.json();
-      return json.success ? json.worklogId : null;
-    } catch (err) {
-      console.error("Save worklog error:", err);
-      return null;
-    }
-  };
-
-  // SUBMIT TIMESHEET EMAIL
-  const handleSubmitTimesheet = async () => {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-
-    try {
-      const payload = {
-        employeeName: employeeData.employeeName,
-        employeeId: employeeData.employeeId,
-        date: selectedDate.toISOString().slice(0, 10),
-        shift: selectedShift,
-        tasks,
-      };
-
-      const resp = await fetch(`${API}/api/submit-timesheet-link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await resp.json();
-
-      if (json.success) {
-        toast({
-          title: "Timesheet Submitted 🎉",
-          description: "Your timesheet has been emailed!",
-        });
-      } else {
-        toast({
-          title: "Submission failed",
-          description: "Please try again.",
-        });
-      }
-    } catch {
-      toast({
-        title: "Error submitting",
-        description: "Server error occurred.",
-      });
-    }
-
-    setIsSubmitting(false);
-  };
-
-  // ADD TASK
-  const handleAddTask = async (task: Task) => {
-    const id = Date.now().toString();
-
-    const newTask = { ...task, id, saved: false };
-    setRawTasks((prev) => [...prev, newTask]);
-
-    const worklogId = await saveWorklogToServer(newTask);
-
-    if (worklogId) {
-      setRawTasks((prev) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, saved: true, worklogId } : t
-        )
-      );
-    }
-  };
-
-  const handleToggleComplete = (id: string) => {
-    setRawTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, isComplete: !task.isComplete } : task
-      )
-    );
-  };
-
-  const handleEditTask = (id: string) => {
-    const found = tasks.find((t) => t.id === id);
-    if (found) {
-      setEditingTask(found);
-      setIsEditDialogOpen(true);
-    }
-  };
-
-  const handleSaveEdit = (updated: Task) => {
-    setRawTasks((prev) =>
-      prev.map((t) => (t.id === updated.id ? updated : t))
-    );
-    setEditingTask(null);
-    setIsEditDialogOpen(false);
-  };
-
-  const handleSaveTask = (taskId: string, percent: number) => {
-    setRawTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, completionPercent: percent } : task
-      )
-    );
-  };
-
-  // RECORDING LOGIC
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setRecordingStartTime(Date.now());
-  };
-
-  const handleStopRecording = async () => {
-    if (!recordingStartTime) return;
-
-    const entry: TimeEntry = {
-      id: Date.now().toString(),
-      startTime: new Date(recordingStartTime).toISOString(),
-      endTime: new Date().toISOString(),
-    };
-
-    const recordedTask: Task = {
-      id: Date.now().toString(),
-      project: "Recorded Session",
-      title: "Time Recording",
-      description: "Automatically tracked time",
-      tools: [],
-      timeEntries: [entry],
-      isComplete: false,
-      completionPercent: 0,
-      saved: false,
-    };
-
-    setRawTasks((prev) => [...prev, recordedTask]);
-
-    const worklogId = await saveWorklogToServer(recordedTask);
-    if (worklogId) {
-      setRawTasks((prev) =>
-        prev.map((t) =>
-          t.id === recordedTask.id
-            ? { ...t, saved: true, worklogId }
-            : t
-        )
-      );
-    }
-
-    setIsRecording(false);
-    setRecordingStartTime(null);
-  };
-
-  const canSubmit = totalSeconds >= shiftSeconds[selectedShift];
-
-  const handleLogout = () => {
-    gsap.to(".tracker-container", {
-      opacity: 0,
-      y: -20,
-      duration: 0.3,
-      onComplete: () => setLocation("/"),
-    });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-blue-950 relative overflow-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/50 backdrop-blur-xl border-b border-blue-500/30">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <img src={logoUrl} className="h-10" />
-            <div className="hidden sm:block">
-              <p className="text-xs text-muted-foreground">Employee</p>
-              <p className="text-sm font-semibold">{employeeData.employeeName}</p>
-              <p className="text-xs text-blue-400 font-mono">
-                ID: {employeeData.employeeId}
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-blue-950 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -top-48 -left-48 animate-pulse" />
+        <div
+          className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse"
+          style={{ animationDelay: "1s" }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="flex justify-center mb-8">
+          <img
+            src={logoUrl}
+            alt="Knockturn Private Limited"
+            className="h-16 object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+          />
+        </div>
+
+        <div className="flex flex-col items-center mb-8">
+          <div ref={chainRef} className="w-1 h-16 bg-gradient-to-b from-gray-400 to-gray-600" />
+          <div ref={lampRef} className="relative">
+            <svg width="80" height="60" viewBox="0 0 80 60" className="drop-shadow-lg">
+              <path
+                d="M20 10 L40 0 L60 10 L60 40 L20 40 Z"
+                fill="url(#lampGradient)"
+                stroke="#3B82F6"
+                strokeWidth="2"
+              />
+              <defs>
+                <linearGradient id="lampGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1e3a8a" />
+                  <stop offset="100%" stopColor="#3B82F6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div
+              ref={glowRef}
+              className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-0"
+              style={{ width: "120px", height: "120px", left: "-20px", top: "-30px" }}
+            />
+          </div>
+        </div>
+
+        <div ref={formRef}>
+          <Card className="p-8 backdrop-blur-xl bg-black/40 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+            <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              Employee Login
+            </h1>
+            <p className="text-center text-muted-foreground mb-6">Pull the lamp to clock in</p>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="employeeId" className="text-foreground">
+                  Employee ID
+                </Label>
+                <Input
+                  id="employeeId"
+                  placeholder="Enter your employee ID"
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  disabled={isAnimating}
+                  className="mt-1 bg-black/50 border-blue-500/40 focus:border-blue-500 text-foreground"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="employeeName" className="text-foreground">
+                  Employee Name
+                </Label>
+                <Input
+                  id="employeeName"
+                  placeholder="Enter your full name"
+                  value={employeeName}
+                  onChange={(e) => setEmployeeName(e.target.value)}
+                  disabled={isAnimating}
+                  className="mt-1 bg-black/50 border-blue-500/40 focus:border-blue-500 text-foreground"
+                />
+              </div>
+
+              <Button
+                onClick={handleLogin}
+                disabled={!employeeId || !employeeName || isAnimating}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500"
+              >
+                {isAnimating ? "Clocking In..." : "Clock In"}
+              </Button>
             </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAnalytics((prev) => !prev)}
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {showAnalytics ? "Hide" : "Show"} Analytics
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" /> Logout
-            </Button>
-          </div>
+          </Card>
         </div>
-      </header>
-
-      {/* Main */}
-      <main className="container mx-auto px-6 py-8 space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between gap-4 bg-blue-900/20 p-6 rounded-lg">
-          <DateSelector
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-          />
-
-          <ShiftSelector
-            selectedShift={selectedShift}
-            onShiftChange={setSelectedShift}
-          />
-        </div>
-
-        <TotalTimeDisplay
-          totalSeconds={totalSeconds}
-          shiftSeconds={shiftSeconds[selectedShift]}
-          isRecording={isRecording}
-        />
-
-        <TaskList
-          tasks={tasks}
-          onToggleComplete={handleToggleComplete}
-          onEditTask={handleEditTask}
-          onSaveTask={handleSaveTask}
-        />
-
-        <EditTaskDialog
-          task={editingTask ?? null}
-          isOpen={isEditDialogOpen}
-          onClose={() => {
-            setIsEditDialogOpen(false);
-            setEditingTask(null);
-          }}
-          onSave={handleSaveEdit}
-        />
-
-        <TaskForm
-          onAddTask={handleAddTask}
-          isRecording={isRecording}
-          onStartRecording={handleStartRecording}
-          onStopRecording={handleStopRecording}
-        />
-
-        {showAnalytics && <AnalyticsDashboard tasks={tasks} />}
-
-        <div className="flex justify-center pt-4">
-          <Button
-            disabled={!canSubmit || isSubmitting}
-            onClick={handleSubmitTimesheet}
-            className={
-              canSubmit
-                ? "bg-green-600 hover:bg-green-500 px-12 py-6 text-lg"
-                : "px-12 py-6 text-lg opacity-40"
-            }
-          >
-            {isSubmitting
-              ? "Submitting..."
-              : canSubmit
-              ? "Submit Timesheet"
-              : `Complete ${selectedShift.toUpperCase()} Shift`}
-          </Button>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
