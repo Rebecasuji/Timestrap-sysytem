@@ -1,19 +1,17 @@
-
 import express from "express";
 import session from "express-session";
 import cors from "cors";
 import passport from "passport";
 import path from "path";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
 
-// Fix __dirname for ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// FIX __dirname for ESBUILD + CJS + RENDER
+// process.cwd() works in all deployed environments
+const __dirname = process.cwd();
 
 // CORS (Allow your Vercel frontend)
 app.use(
@@ -42,10 +40,10 @@ app.use(passport.session());
 // app.use("/api/users", userRoutes);
 
 // SERVE FRONTEND (client/dist)
-app.use(express.static(path.join(__dirname, "../client/dist")));
+app.use(express.static(path.join(__dirname, "client/dist")));
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+  res.sendFile(path.join(__dirname, "client/dist/index.html"));
 });
 
 // ---- PORT (IMPORTANT FOR RENDER) ----
