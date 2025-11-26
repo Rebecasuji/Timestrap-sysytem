@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { gsap } from "gsap";
 import logoUrl from "@/assets/screenshot.png";
 
+// ✅ REGULAR FIX: Call backend using env variable
+const API = import.meta.env.VITE_API_URL;
+
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const [employeeId, setEmployeeId] = useState("");
@@ -18,11 +21,12 @@ export default function LoginPage() {
   const glowRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Updated to use Render backend URL
   const handleLogin = async () => {
     if (!employeeId || !employeeName) return;
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(`${API}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
